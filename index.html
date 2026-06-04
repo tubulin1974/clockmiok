@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>나만의 시계</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Share Tech Mono', monospace;
+      padding: 2rem 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .weather-widget {
+      position: absolute;
+      top: 36px;
+      left: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 5px;
+    }
+    .weather-icon { font-size: 36px; line-height: 1; }
+    .weather-temp { font-size: 20px; color: #ffffff; letter-spacing: 1px; }
+    .weather-desc { font-size: 13px; color: #888; letter-spacing: 1px; }
+    .weather-city { font-size: 13px; color: #666; letter-spacing: 1px; }
+    .weather-updated { font-size: 9px; color: #444; letter-spacing: 1px; margin-top: 2px; }
+
+    .clock-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .clock-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .clock-ampm {
+      font-size: clamp(16px, 5vw, 22px);
+      color: #aaaaaa;
+      letter-spacing: 3px;
+      padding-bottom: 6px;
+    }
+    .clock-time {
+      font-size: clamp(52px, 16vw, 80px);
+      letter-spacing: 6px;
+      color: #ffffff;
+      line-height: 1;
+    }
+    .separator {
+      display: inline-block;
+      animation: blink 1s step-end infinite;
+      color: #ffffff;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .divider {
+      width: 200px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #ffffff, transparent);
+      margin: 4px 0 20px;
+      opacity: 0.4;
+    }
+    .clock-date {
+      font-size: clamp(17px, 4.6vw, 21px);
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 3px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="weather-widget">
+    <div class="weather-icon" id="w-icon">⛅</div>
+    <div class="weather-temp" id="w-temp">--°C</div>
+    <div class="weather-desc" id="w-desc">로딩중...</div>
+    <div class="weather-city">서울</div>
+    <div class="weather-updated" id="w-updated"></div>
+  </div>
+
+  <div class="clock-center">
+    <div class="clock-row">
+      <div class="clock-ampm" id="ampm">AM</div>
+      <div class="clock-time" id="hm">00<span class="separator">:</span>00</div>
+    </div>
+    <div class="divider"></div>
+    <div class="clock-date" id="date-str">---</div>
+  </div>
+
+  <script>
+    const days = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+    const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+    function pad(n){ return String(n).padStart(2,'0'); }
+
+    function updateClock(){
+      const now = new Date();
+      let h = now.getHours();
+      const m = now.getMinutes();
+      const ampm = h < 12 ? 'AM' : 'PM';
+      let h12 = h % 12 || 12;
+      document.getElementById('hm').innerHTML = pad(h12) + '<span class="separator">:</span>' + pad(m);
+      document.getElementById('ampm').textContent = ampm;
+      document.getElementById('date-str').textContent =
+        now.getFullYear() + '년 ' + months[now.getMonth()] + ' ' + now.getDate() + '일 ' + days[now.getDay()];
+    }
+
+    const weatherCodes = {
+      0:'☀️', 1:'🌤️', 2:'⛅', 3:'☁️',
+      45:'🌫️', 48:'🌫️',
+      51:'🌦️', 53:'🌦️', 55:'🌧️',
+      61:'🌧️', 63:'🌧️', 65:'🌧️',
+      71:'🌨️', 73:'🌨️', 75:'❄️',
+      80:'🌦️', 81:'🌧️', 82:'⛈️',
+      95:'⛈️', 96:'⛈️', 99:'⛈️'
+    };
+    const weatherDescs = {
+      0:'맑음', 1:'대체로 맑음', 2:'구름많음', 3:'흐림',
+      45:'안개', 48:'안개',
+      51:'이슬비', 53:'이슬비', 55:'이슬비',
+      61:'비', 63:'비', 65:'강한비',
+      71:'눈', 73:'눈', 75:'강한눈',
+      80:'소나기', 81:'소나기', 82:'강한소나기',
+      95:'뇌우', 96:'뇌우', 99:'뇌우'
+    };
+
+    async function fetchWeather(){
+      try {
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.978&current=temperature_2m,weathercode&timezone=Asia/Seoul');
+        const data = await res.json();
+        const temp = Math.round(data.current.temperature_2m);
+        const code = data.current.weathercode;
+        document.getElementById('w-icon').textContent = weatherCodes[code] || '🌡️';
+        document.getElementById('w-temp').textContent = temp + '°C';
+        document.getElementById('w-desc').textContent = weatherDescs[code] || '날씨정보';
+        const now = new Date();
+        document.getElementById('w-updated').textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ' 갱신';
+      } catch(e) {
+        document.getElementById('w-icon').textContent = '🌡️';
+        document.getElementById('w-desc').textContent = '정보없음';
+      }
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    fetchWeather();
+    setInterval(fetchWeather, 30 * 60 * 1000);
+  </script>
+</body>
+</html>
