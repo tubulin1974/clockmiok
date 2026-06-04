@@ -1,0 +1,2 @@
+# clockmiok
+only miok clock
